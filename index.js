@@ -2,68 +2,67 @@ const request = require("request-promise");
 const cheerio = require("cheerio");
 const fs = require("fs/promises");
 
-const URL = "http://books.toscrape.com";
-const writeCSV = async (data, categoryName) => {
+const URL =
+  "https://www.instagram.com/api/v1/users/web_profile_info/?username=safridiofficial";
+const writeCSV = async (data, name) => {
   const csvData = data
     .map(function (d) {
       return d.join(",");
     })
     .join("\r\n");
-  console.log(`Creating ${categoryName}.csv file with ${data.length} records`);
-  await fs.writeFile(`./data/${categoryName}.csv`, csvData);
-};
-const extractCategory = async (url, data) => {
-  const catResponse = await request(url);
-  let categoryPageCheerio = cheerio.load(catResponse);
-  const isPaginationAvailable = categoryPageCheerio("li.next > a");
-  
-  console.log(isPaginationAvailable.length);
 
-  const re = new RegExp(",", "g");
-
-  let items = categoryPageCheerio("ol.row > li");
-  const itemsLength = items.length;
-  //extractItemData();
-  for (let index = 0; index < itemsLength; index++) {
-    const itemData = [];
-    const item = items[index];
-    const image = categoryPageCheerio(item)
-      .find("div.image_container > a > img")
-      .attr("src");
-    const title = categoryPageCheerio(item)
-      .find("h3 > a")
-      .attr("title")
-      .replace(re, "~");
-    const price = categoryPageCheerio(item)
-      .find(".product_price > p.price_color")
-      .text();
-    itemData.push(image);
-    itemData.push(title);
-    itemData.push(price);
-    data.push(itemData);
-  }
-
-  if (isPaginationAvailable.length){
-    const paginationURL = isPaginationAvailable.attr("href");
-    const arrOfURL =  url.split("/");
-    const removedLastItem = arrOfURL.slice(0, -1);
-    const baseURL = removedLastItem.join("/");
-    await extractCategory(`${baseURL}/${paginationURL}`, data)
-    }
-    return data;
+  console.log(`Creating ${name}.csv file with ${data.length} records`);
+  await fs.writeFile(`./data/${name}.csv`, csvData);
 };
 (async () => {
-  const response = await request(URL);
-  let mainCheerio = cheerio.load(response);
-  const navList = mainCheerio("ul.nav.nav-list > li > ul > li");
-  const myTargetArr = [navList[3]];
-  const newArr = myTargetArr.splice(0, 1);
-  for (nav of navList) {
-    const url = mainCheerio(nav).find("a").attr("href");
-    const categoryName = mainCheerio(nav).find("a").text().trim();
-    console.log(`categoryName = ${categoryName}`);
-    const data = [["Image URL", "Title", "Price"]];
-    await extractCategory(`${URL}/${url}`, data);
-    await writeCSV(data, categoryName);
-  }
+  const response = await request({
+    uri: URL,
+    method: "GET",
+    headers: {
+      accept: "*/*",
+      "accept-encoding": "gzip, deflate, br",
+      "accept-language": "en-US,en;q=0.9,zh-TW;q=0.8,zh;q=0.7",
+      cookie:
+        "ig_nrcb=1; mid=ZCPwbwAEAAHSBBRhOGR1hDUhixfq; ig_did=F849BF4A-3A20-4F58-A2C4-EA8C1474BE2D; csrftoken=EIvttBzo5qSoGCYirYoi8EofYzRc0oiV",
+      referer: "https://www.instagram.com/safridiofficial/",
+      "sec-ch-prefers-color-scheme": "light",
+      "sec-ch-ua":
+        '"Google Chrome";v="111", "Not(A:Brand";v="8", "Chromium";v="111"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": "Linux",
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-origin",
+      "user-agent":
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
+      "viewport-width": "718",
+      "x-asbd-id": "198387",
+      "x-csrftoken": "EIvttBzo5qSoGCYirYoi8EofYzRc0oiV",
+      "x-ig-app-id": "936619743392459",
+      "x-ig-www-claim": "0",
+      "x-requested-with": "XMLHttpRequest",
+    },
+    resolveWithFullResponse: true,
+    gzip: true,
+  });
+  const body = JSON.parse(response.body);
+  const {
+    data: { user },
+  } = body;
+  const {
+    biography,
+    edge_followed_by: { count: followedBy },
+    edge_follow: { count: following },
+    full_name,
+    profile_pic_url,
+    edge_owner_to_timeline_media: { count: noOfPosts },
+  } = user;
+  const profilePicURL = decodeURI(profile_pic_url);
+  const csvData = [
+    ["name", "Biography", "Profile Pic URL", "Followed By", "Following", "Total Posts"],
+  ];
+  const data = [full_name, biography, profilePicURL, followedBy, following, noOfPosts];
+  csvData.push(data);
+  console.log(csvData);
+  await writeCSV(csvData, "Insta data");
 })();
