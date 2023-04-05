@@ -29,8 +29,16 @@ const getTextArray = async (page, selector) => {
       "div.quote > span > small.author"
     );
     const tagsArray = await getTextArray(page, "div.quote > div.tags");
-    console.log(tagsArray);
-    await browser.close();
+
+    const nextBtn = await page.evaluate(() => {
+      const element = document.querySelector("ul.pager > li.next > a");
+      if (element) {
+        return true;
+      }
+      return false;
+    });
+    if (nextBtn) await page.click("ul.pager > li.next > a");
+    // await browser.close();
   } catch (error) {
     console.log(error);
   }
