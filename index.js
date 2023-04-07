@@ -23,7 +23,7 @@ const getQuotesObject = (quotes, writers, tags, data) => {
   quotes.map((quote, index) => {
     
     data.push({
-      newKey: ++sNo,
+      SNo: ++sNo,
       quote: quote.value,
       writer: writers[index].value,
       tags: tags[index].join(","),
